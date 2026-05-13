@@ -60,7 +60,13 @@ Paste this directly into the chat:
     return min(entropy / max(math.log2(total + 1), _ENTROPY_FLOOR), 1.0)
 ```
 
-Expected: REDACT — `_ENTROPY_FLOOR` is a protected constant and triggers L2.
+Expected: REDACT — `_ENTROPY_FLOOR` is a protected symbol and triggers L2.
+
+> **Note on scope:** when you paste code inline, Kiri does symbol substitution
+> only — `_ENTROPY_FLOOR` becomes `[PROTECTED:_ENTROPY_FLOOR]` but the
+> surrounding algorithm is forwarded as-is.  Full body redaction applies when
+> Claude *reads a file* (step 3): Kiri intercepts the tool result and replaces
+> the entire function body with a stub.  Inline pastes are a known limitation.
 
 ---
 
