@@ -22,22 +22,16 @@ Kiri redact implementation details in real time.
 
 ### Step 1 — Build the Kiri image
 
-Clone the Kiri source repo and build the image (one-time):
+Clone the Kiri source repo anywhere you like, then build the image:
 
-**Windows**
-```powershell
-git clone https://github.com/kiri-ai/kiri C:\kiri
-.\scripts\build-image.ps1 -KiriRepo C:\kiri
-```
-
-**Linux / Mac**
 ```bash
-git clone https://github.com/kiri-ai/kiri ~/kiri
-bash scripts/build-image.sh ~/kiri
+git clone https://github.com/kiri-ai/kiri
+scripts/build-image.sh /path/to/kiri        # Linux / Mac
+scripts\build-image.ps1 -KiriRepo C:\path\to\kiri   # Windows
 ```
 
-> If both repos share the same parent directory (`kiri/` and `kiri-demo/` side by
-> side), the build scripts find the source automatically — no argument needed.
+> If `kiri/` and `kiri-demo/` share the same parent directory the build
+> scripts find the source automatically — no argument needed.
 
 ---
 
