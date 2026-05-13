@@ -31,6 +31,16 @@ if [[ -z "$KIRI_REPO" || ! -f "$KIRI_REPO/Dockerfile" ]]; then
     exit 1
 fi
 
+if ! docker info > /dev/null 2>&1; then
+    echo "Docker is not running. Start Docker and try again." >&2
+    exit 1
+fi
+
+if [[ -n "$(docker images -q kiri-local 2>/dev/null)" ]]; then
+    echo "kiri-local image already exists. Run 'docker rmi kiri-local' to force a rebuild."
+    exit 0
+fi
+
 echo "Building kiri-local from: $KIRI_REPO"
 docker build -t kiri-local "$KIRI_REPO"
 echo "Done. Image tagged as kiri-local."

@@ -38,6 +38,19 @@ Or point to an existing clone:
     exit 1
 }
 
+# Check Docker is running
+if (-not (docker info 2>$null)) {
+    Write-Error "Docker is not running. Start Docker Desktop and try again."
+    exit 1
+}
+
+# Skip if image already exists
+$existing = docker images -q kiri-local 2>$null
+if ($existing) {
+    Write-Host "kiri-local image already exists. Run 'docker rmi kiri-local' to force a rebuild." -ForegroundColor Yellow
+    exit 0
+}
+
 Write-Host "Building kiri-local from: $KiriRepo" -ForegroundColor Cyan
 docker build -t kiri-local $KiriRepo
 Write-Host "Done. Image tagged as kiri-local." -ForegroundColor Green
