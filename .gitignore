@@ -1,0 +1,13 @@
+# Local environment — never commit keys
+.env
+
+# Kiri runtime state (rebuilt locally)
+.kiri/index/
+.kiri/keys/
+.kiri/logs/
+.kiri/models/
+.kiri/upstream.key
+
+# Python
+__pycache__/
+*.py[cod]

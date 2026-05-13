@@ -1,0 +1,8 @@
+oauth_passthrough: true          # set to false if using API key mode
+similarity_threshold: 0.75
+hard_block_threshold: 0.90
+action: sanitize
+proxy_port: 8765
+ollama_model: qwen2.5:3b
+ollama_base_url: http://ollama:11434
+embedding_model: all-MiniLM-L6-v2

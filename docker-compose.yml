@@ -1,0 +1,61 @@
+services:
+
+  kiri:
+    # Build the image once: run scripts/build-image.ps1 (Windows) or scripts/build-image.sh (Linux/Mac)
+    # When an official image is published, replace with:
+    #   image: ghcr.io/kiri-ai/kiri:latest
+    image: kiri-local
+    restart: always
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ${WORKSPACE_HOST:-.}:/workspace:ro
+      - ./.kiri:/workspace/.kiri
+    environment:
+      - WORKSPACE=/workspace
+      - KIRI_CONFIG=/workspace/.kiri/config.yaml
+      - OLLAMA_BASE_URL=http://ollama:11434
+    secrets:
+      - anthropic_key
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8765/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  ollama-pull:
+    image: curlimages/curl:latest
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        curl -sf http://ollama:11434/api/pull \
+          -d '{"model":"qwen2.5:3b"}' \
+          -H 'Content-Type: application/json'
+
+secrets:
+  anthropic_key:
+    file: .kiri/upstream.key   # created automatically by start scripts in OAuth mode
+
+volumes:
+  ollama_models:
