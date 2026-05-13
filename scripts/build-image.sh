@@ -10,7 +10,7 @@ KIRI_REPO="${1:-}"
 
 if [[ -z "$KIRI_REPO" ]]; then
     DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-    for candidate in "$DEMO_DIR/../kiri" "$DEMO_DIR/../AI-Layer/kiri"; do
+    for candidate in "$DEMO_DIR/../kiri/kiri" "$DEMO_DIR/../kiri" "$DEMO_DIR/../AI-Layer/kiri/kiri" "$DEMO_DIR/../AI-Layer/kiri"; do
         if [[ -f "$candidate/Dockerfile" ]]; then
             KIRI_REPO="$(cd "$candidate" && pwd)"
             break

@@ -9,7 +9,12 @@ param(
 $DemoDir = Split-Path -Parent $PSScriptRoot
 
 if ([string]::IsNullOrEmpty($KiriRepo)) {
-    foreach ($candidate in @("$DemoDir\..\kiri", "$DemoDir\..\AI-Layer\kiri")) {
+    foreach ($candidate in @(
+        "$DemoDir\..\kiri\kiri",
+        "$DemoDir\..\kiri",
+        "$DemoDir\..\AI-Layer\kiri\kiri",
+        "$DemoDir\..\AI-Layer\kiri"
+    )) {
         $resolved = [System.IO.Path]::GetFullPath($candidate)
         if (Test-Path "$resolved\Dockerfile") {
             $KiriRepo = $resolved
