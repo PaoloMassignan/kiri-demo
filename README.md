@@ -63,15 +63,8 @@ It takes a few minutes the first time; subsequent builds are cached.
 
 ### Step 2 — Configure your session
 
-```bash
-cp .env.example .env               # Linux / Mac
-```
-```powershell
-Copy-Item .env.example .env        # Windows
-```
-
 **OAuth passthrough (Claude Pro/Max or OpenCode subscription)**
-No changes needed — leave `ANTHROPIC_API_KEY` commented out in `.env`.
+Nothing to do — skip to Step 3.
 
 **API key mode**
 
@@ -84,8 +77,9 @@ echo "sk-ant-YOUR-KEY" > .kiri/upstream.key      # Linux / Mac
 "sk-ant-YOUR-KEY" | Out-File .kiri\upstream.key  # Windows
 ```
 
-Then generate a Kiri key after starting (step 3), paste it into `.env`, and
-set `oauth_passthrough: false` in `.kiri/config.yaml`.
+Then copy `.env.example` to `.env`, uncomment `ANTHROPIC_API_KEY` and paste
+your Kiri key (generated after first start), and set `oauth_passthrough: false`
+in `.kiri/config.yaml`.
 
 ---
 
