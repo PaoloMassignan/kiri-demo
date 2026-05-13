@@ -19,8 +19,15 @@ if [[ -z "$KIRI_REPO" ]]; then
 fi
 
 if [[ -z "$KIRI_REPO" || ! -f "$KIRI_REPO/Dockerfile" ]]; then
-    echo "Could not find the kiri repository." >&2
-    echo "Usage: bash scripts/build-image.sh /path/to/kiri-repo" >&2
+    PARENT="$(cd "$DEMO_DIR/.." && pwd)"
+    echo "Could not find the kiri repository next to kiri-demo." >&2
+    echo "Clone it first:" >&2
+    echo "  cd $PARENT" >&2
+    echo "  git clone https://github.com/PaoloMassignan/kiri.git" >&2
+    echo "Then re-run this script from kiri-demo." >&2
+    echo "" >&2
+    echo "Or point to an existing clone:" >&2
+    echo "  bash scripts/build-image.sh /path/to/kiri" >&2
     exit 1
 fi
 

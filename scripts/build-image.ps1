@@ -19,7 +19,17 @@ if ([string]::IsNullOrEmpty($KiriRepo)) {
 }
 
 if ([string]::IsNullOrEmpty($KiriRepo) -or -not (Test-Path "$KiriRepo\Dockerfile")) {
-    Write-Error "Could not find the kiri repository.`nUsage: .\scripts\build-image.ps1 -KiriRepo C:\path\to\kiri-repo"
+    $parent = [System.IO.Path]::GetFullPath("$DemoDir\..")
+    Write-Error @"
+Could not find the kiri repository next to kiri-demo.
+Clone it first:
+  cd $parent
+  git clone https://github.com/PaoloMassignan/kiri.git
+Then re-run this script from kiri-demo.
+
+Or point to an existing clone:
+  .\scripts\build-image.ps1 -KiriRepo C:\path\to\kiri
+"@
     exit 1
 }
 
