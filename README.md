@@ -1,6 +1,6 @@
 # kiri-demo
 
-A self-contained demo for [Kiri](https://github.com/kiri-ai/kiri) — an on-premises
+A self-contained demo for [Kiri](https://github.com/PaoloMassignan/kiri) — an on-premises
 proxy that prevents proprietary source code from leaving your network when using
 Claude Code, Cursor, or other LLM-powered tools.
 
@@ -20,44 +20,18 @@ Kiri redact implementation details in real time.
 
 ## Setup
 
-Pick any parent directory and clone both repos side by side — the build
-script will find them automatically:
-
-```
-projects/
-  kiri/          <- Kiri source (for building the Docker image)
-  kiri-demo/     <- this repo
-```
+### Step 1 — Clone this repo
 
 ```bash
-# Linux / Mac
-cd ~/projects    # or wherever you prefer
-git clone https://github.com/PaoloMassignan/kiri.git
 git clone https://github.com/PaoloMassignan/kiri-demo.git
 cd kiri-demo
 ```
 
 ```powershell
 # Windows
-cd C:\projects   # or wherever you prefer
-git clone https://github.com/PaoloMassignan/kiri.git
 git clone https://github.com/PaoloMassignan/kiri-demo.git
 cd kiri-demo
 ```
-
----
-
-### Step 1 — Build the Docker image (one-time)
-
-```bash
-bash scripts/build-image.sh        # Linux / Mac
-```
-```powershell
-.\scripts\build-image.ps1          # Windows
-```
-
-This builds the `kiri-local` image from the `kiri/` repo cloned above.
-It takes a few minutes the first time; subsequent builds are cached.
 
 ---
 
@@ -94,14 +68,14 @@ bash scripts/start.sh              # Linux / Mac
 
 The script:
 1. Starts Docker if needed (Windows only)
-2. Launches Kiri (proxy + Ollama classifier) via `docker compose`
+2. Pulls the Kiri image and launches it via `docker compose`
 3. Waits for the proxy to be ready
 4. Sets `ANTHROPIC_BASE_URL=http://localhost:8765` for this session only
 5. Opens Claude Code or OpenCode
 6. Restores your original environment when you exit
 
-> First run downloads the `qwen2.5:3b` Ollama model (~2 GB). Subsequent
-> starts are instant.
+> First run pulls the Kiri image (~500 MB) and the `qwen2.5:3b` Ollama
+> classifier model (~2 GB). Subsequent starts are instant.
 
 ---
 
@@ -123,7 +97,6 @@ Follow the guided test sequence in **[DEMO.md](DEMO.md)**.
 scripts/
   start.ps1 / start.sh          launch script (Windows / Linux-Mac)
   kiri.ps1  / kiri.sh           thin kiri CLI wrapper
-  build-image.ps1 / build-image.sh   one-time image build
 src/
   engine/risk_scorer.py         fictional Helios v2.3 risk engine
   engine/fraud_detector.py      fictional pattern correlation engine
@@ -150,9 +123,6 @@ docker compose --project-directory . down
 docker compose --project-directory . logs kiri
 docker compose --project-directory . logs ollama
 ```
-
-**`kiri-local` image not found**
-Run `scripts/build-image.sh` (or `.ps1`) first — see Step 1.
 
 **OAuth 401 errors**
 Make sure `oauth_passthrough: true` is in `.kiri/config.yaml` and

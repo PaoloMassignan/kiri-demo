@@ -1,10 +1,7 @@
 services:
 
   kiri:
-    # Build the image once: run scripts/build-image.ps1 (Windows) or scripts/build-image.sh (Linux/Mac)
-    # When an official image is published, replace with:
-    #   image: ghcr.io/kiri-ai/kiri:latest
-    image: kiri-local
+    image: ghcr.io/paolomassignan/kiri:latest
     restart: always
     ports:
       - "127.0.0.1:8765:8765"
