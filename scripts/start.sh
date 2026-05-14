@@ -2,39 +2,25 @@
 # Starts Kiri and launches Claude Code or OpenCode with the proxy configured.
 # Restores the original environment on exit.
 #
-# Usage: bash scripts/start.sh [claude|opencode]
-#   Omit the argument to auto-detect which tool is installed.
+# Usage:
+#   bash scripts/start.sh               # OAuth or API key mode (Anthropic/Claude cloud)
+#   bash scripts/start.sh local         # Local Ollama mode (no cloud account needed)
+#   bash scripts/start.sh local claude  # Force a specific tool in local mode
+#   bash scripts/start.sh claude        # Force a specific tool in cloud mode
 
 set -euo pipefail
 DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DEMO_DIR"
 
-# ── Load .env ──────────────────────────────────────────────────────────────────
-if [[ -f .env ]]; then
-    set -a
-    # shellcheck disable=SC1091
-    source .env
-    set +a
-fi
-
-ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-http://localhost:8765}"
-ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
-
-# ── OAuth vs API key mode ──────────────────────────────────────────────────────
-if [[ -z "$ANTHROPIC_API_KEY" ]]; then
-    echo "Mode: OAuth passthrough"
-    mkdir -p .kiri
-    if [[ ! -f .kiri/upstream.key ]]; then
-        echo "oauth-passthrough-placeholder" > .kiri/upstream.key
-    fi
-else
-    echo "Mode: API key (${ANTHROPIC_API_KEY:0:8}...)"
-    if [[ ! -f .kiri/upstream.key ]]; then
-        echo "Error: .kiri/upstream.key not found." >&2
-        echo "Create it with: echo 'sk-ant-YOUR-KEY' > .kiri/upstream.key" >&2
-        exit 1
-    fi
-fi
+# ── Parse args ─────────────────────────────────────────────────────────────────
+LOCAL=false
+TOOL=""
+for arg in "$@"; do
+    case "$arg" in
+        local) LOCAL=true ;;
+        claude|opencode) TOOL="$arg" ;;
+    esac
+done
 
 # ── Docker check ───────────────────────────────────────────────────────────────
 if ! docker ps >/dev/null 2>&1; then
@@ -42,15 +28,55 @@ if ! docker ps >/dev/null 2>&1; then
     exit 1
 fi
 
-# ── Start Kiri if not running ──────────────────────────────────────────────────
-STARTED=false
-RUNNING=$(docker compose --project-directory "$DEMO_DIR" ps --services --filter status=running 2>/dev/null | grep -c "^kiri$" || true)
+# ── Mode setup ─────────────────────────────────────────────────────────────────
+COMPOSE_PROFILE_ARGS=()
+
+if [[ "$LOCAL" == "true" ]]; then
+    echo "Mode: Local LLM (Ollama/qwen2.5:3b via LiteLLM — no cloud account needed)"
+    mkdir -p .kiri
+    if [[ ! -f .kiri/upstream.key ]]; then
+        echo -n "local-mode-placeholder" > .kiri/upstream.key
+    fi
+    export KIRI_UPSTREAM_URL="http://litellm:4000"
+    COMPOSE_PROFILE_ARGS=("--profile" "local")
+    TOOL_API_KEY="sk-ant-local-demo"
+else
+    # ── Load .env ───────────────────────────────────────────────────────────────
+    if [[ -f .env ]]; then
+        set -a
+        # shellcheck disable=SC1091
+        source .env
+        set +a
+    fi
+
+    ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
+
+    if [[ -z "$ANTHROPIC_API_KEY" ]]; then
+        echo "Mode: OAuth passthrough"
+        mkdir -p .kiri
+        if [[ ! -f .kiri/upstream.key ]]; then
+            echo -n "oauth-passthrough-placeholder" > .kiri/upstream.key
+        fi
+    else
+        echo "Mode: API key (${ANTHROPIC_API_KEY:0:8}...)"
+        if [[ ! -f .kiri/upstream.key ]]; then
+            echo "Error: .kiri/upstream.key not found." >&2
+            echo "Create it with: echo 'sk-ant-YOUR-KEY' > .kiri/upstream.key" >&2
+            exit 1
+        fi
+    fi
+    TOOL_API_KEY="$ANTHROPIC_API_KEY"
+fi
+
+# ── Start services if not running ─────────────────────────────────────────────
+RUNNING=$(docker compose "${COMPOSE_PROFILE_ARGS[@]}" --project-directory "$DEMO_DIR" ps --services --filter status=running 2>/dev/null | grep -c "^kiri$" || true)
 if [[ "$RUNNING" -eq 0 ]]; then
     echo "Starting Kiri..."
     export WORKSPACE_HOST="$DEMO_DIR"
-    docker compose --project-directory "$DEMO_DIR" up -d
+    docker compose "${COMPOSE_PROFILE_ARGS[@]}" --project-directory "$DEMO_DIR" up -d
 
     echo -n "Waiting for Kiri to be ready"
+    STARTED=false
     for i in $(seq 1 30); do
         if curl -sf http://localhost:8765/health >/dev/null 2>&1; then
             echo " ready."
@@ -71,15 +97,20 @@ else
 fi
 
 # ── Pick tool ──────────────────────────────────────────────────────────────────
-TOOL="${1:-}"
 if [[ -z "$TOOL" ]]; then
-    if command -v claude >/dev/null 2>&1; then
-        TOOL=claude
-    elif command -v opencode >/dev/null 2>&1; then
-        TOOL=opencode
+    if [[ "$LOCAL" == "true" ]]; then
+        # Local mode: prefer OpenCode (Claude Code needs a real Anthropic session)
+        if command -v opencode >/dev/null 2>&1; then TOOL=opencode
+        elif command -v claude >/dev/null 2>&1;   then TOOL=claude
+        fi
     else
+        if command -v claude >/dev/null 2>&1;     then TOOL=claude
+        elif command -v opencode >/dev/null 2>&1; then TOOL=opencode
+        fi
+    fi
+    if [[ -z "$TOOL" ]]; then
         echo "Error: neither 'claude' nor 'opencode' found in PATH." >&2
-        echo "Install one and retry, or set the tool explicitly: bash scripts/start.sh claude" >&2
+        echo "Install one and retry, or pass the tool explicitly: bash scripts/start.sh local opencode" >&2
         exit 1
     fi
 fi
@@ -90,8 +121,10 @@ _PREV_BASE_URL="${ANTHROPIC_BASE_URL:-}"
 _PREV_API_KEY="${ANTHROPIC_API_KEY:-}"
 
 export ANTHROPIC_BASE_URL="http://localhost:8765"
-if [[ -z "$ANTHROPIC_API_KEY" ]]; then
-    unset ANTHROPIC_API_KEY
+if [[ -z "$TOOL_API_KEY" ]]; then
+    unset ANTHROPIC_API_KEY 2>/dev/null || true
+else
+    export ANTHROPIC_API_KEY="$TOOL_API_KEY"
 fi
 
 "$TOOL" || true
@@ -100,12 +133,15 @@ fi
 if [[ -n "$_PREV_BASE_URL" ]]; then
     export ANTHROPIC_BASE_URL="$_PREV_BASE_URL"
 else
-    unset ANTHROPIC_BASE_URL
+    unset ANTHROPIC_BASE_URL 2>/dev/null || true
 fi
 if [[ -n "$_PREV_API_KEY" ]]; then
     export ANTHROPIC_API_KEY="$_PREV_API_KEY"
 else
     unset ANTHROPIC_API_KEY 2>/dev/null || true
+fi
+if [[ "$LOCAL" == "true" ]]; then
+    unset KIRI_UPSTREAM_URL 2>/dev/null || true
 fi
 
 echo "Session ended. Kiri is still running (stop with: docker compose --project-directory '$DEMO_DIR' down)"

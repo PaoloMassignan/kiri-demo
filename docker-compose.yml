@@ -12,6 +12,9 @@ services:
       - WORKSPACE=/workspace
       - KIRI_CONFIG=/workspace/.kiri/config.yaml
       - OLLAMA_BASE_URL=http://ollama:11434
+      # In local mode the start script sets KIRI_UPSTREAM_URL=http://litellm:4000
+      # so that Kiri forwards to LiteLLM instead of the real Anthropic API.
+      - ANTHROPIC_BASE_URL=${KIRI_UPSTREAM_URL:-https://api.anthropic.com}
     secrets:
       - anthropic_key
     depends_on:
@@ -49,6 +52,20 @@ services:
         curl -sf http://ollama:11434/api/pull \
           -d '{"model":"qwen2.5:3b"}' \
           -H 'Content-Type: application/json'
+
+  # ── Local mode: LiteLLM bridges Kiri → Ollama (no cloud account needed) ──────
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    profiles: [local]
+    restart: always
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+    depends_on:
+      ollama:
+        condition: service_healthy
 
 secrets:
   anthropic_key:

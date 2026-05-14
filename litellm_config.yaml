@@ -1,0 +1,17 @@
+model_list:
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-3-haiku-20240307
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-opus-4-7
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
