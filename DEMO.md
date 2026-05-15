@@ -54,9 +54,12 @@ The forwarded prompt should show the function body replaced with a stub.
 
 ## 3. Copy-paste the body of a protected function
 
-Paste this directly into the chat:
+Paste the **entire block below** (including the triple backticks) into the chat:
 
-```
+````
+What does this code do?
+
+```python
     if not fps:
         return 0.0
     counts: dict[str, int] = {}
@@ -67,10 +70,11 @@ Paste this directly into the chat:
     entropy = -sum((c / total) * math.log2(c / total) for c in counts.values())
     return min(entropy / max(math.log2(total + 1), _ENTROPY_FLOOR), 1.0)
 ```
+````
 
-Expected: REDACT — `_ENTROPY_FLOOR` triggers L2 and Kiri replaces the entire
-code block with a stub. The algorithm logic (Shannon entropy, SHA-1 hashing)
-does not reach the LLM.
+Expected: REDACT — `_ENTROPY_FLOOR` triggers L2 and Kiri replaces the **entire
+fenced code block** with a stub. The algorithm logic (Shannon entropy, SHA-1
+hashing) does not reach the LLM — only a `# [redacted]` stub does.
 
 ---
 
