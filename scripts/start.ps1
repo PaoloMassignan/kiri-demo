@@ -2,7 +2,7 @@
 # Restores the original environment on exit.
 #
 # Usage:
-#   .\scripts\start.ps1                   # OAuth or API key mode (uses Anthropic/Claude cloud)
+#   .\scripts\start.ps1                   # OAuth or API key mode (Anthropic/Claude cloud)
 #   .\scripts\start.ps1 -Local            # Local Ollama mode (no cloud account needed)
 #   .\scripts\start.ps1 -Tool opencode    # Force a specific tool
 param(
@@ -13,7 +13,7 @@ param(
 $DemoDir = Split-Path -Parent $PSScriptRoot
 Set-Location $DemoDir
 
-# ── Docker check ───────────────────────────────────────────────────────────────
+# --- Docker check -------------------------------------------------------------
 & docker ps *>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Docker not running - starting Docker Desktop..." -ForegroundColor Yellow
@@ -28,11 +28,11 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "Docker ready." -ForegroundColor Green
 }
 
-# ── Mode setup ─────────────────────────────────────────────────────────────────
+# --- Mode setup ---------------------------------------------------------------
 $ComposeArgs = @("--project-directory", $DemoDir)
 
 if ($Local) {
-    Write-Host "Mode: Local LLM (Ollama/qwen2.5:3b via LiteLLM — no cloud account needed)" -ForegroundColor Cyan
+    Write-Host "Mode: Local LLM (Ollama/qwen2.5:3b via LiteLLM - no cloud account needed)" -ForegroundColor Cyan
     New-Item -ItemType Directory -Force -Path ".kiri" | Out-Null
     if (-not (Test-Path ".kiri\upstream.key")) {
         "local-mode-placeholder" | Out-File -FilePath ".kiri\upstream.key" -Encoding ascii -NoNewline
@@ -42,7 +42,7 @@ if ($Local) {
     $ComposeArgs += @("--profile", "local")
     $ToolApiKey = "sk-ant-local-demo"
 } else {
-    # ── Load .env ───────────────────────────────────────────────────────────────
+    # --- Load .env ------------------------------------------------------------
     if (Test-Path ".env") {
         Get-Content ".env" | Where-Object { $_ -notmatch '^\s*#' -and $_ -match '\S' -and $_ -match '=' } | ForEach-Object {
             $name, $value = $_ -split '=', 2
@@ -69,7 +69,7 @@ if ($Local) {
     $ToolApiKey = $ApiKey
 }
 
-# ── Start services if not running ─────────────────────────────────────────────
+# --- Start services if not running --------------------------------------------
 $running = docker compose @ComposeArgs ps --services --filter status=running 2>$null | Select-String "^kiri$"
 if (-not $running) {
     Write-Host "Starting Kiri..." -ForegroundColor Yellow
@@ -94,7 +94,7 @@ if (-not $running) {
     Write-Host "Kiri already running." -ForegroundColor Green
 }
 
-# ── Pick tool ──────────────────────────────────────────────────────────────────
+# --- Pick tool ----------------------------------------------------------------
 if ([string]::IsNullOrEmpty($Tool)) {
     if ($Local) {
         # Local mode: prefer OpenCode (Claude Code needs a real Anthropic session)
@@ -111,7 +111,7 @@ if ([string]::IsNullOrEmpty($Tool)) {
 }
 Write-Host "Launching $Tool through Kiri..." -ForegroundColor Cyan
 
-# ── Set env, launch, restore ───────────────────────────────────────────────────
+# --- Set env, launch, restore -------------------------------------------------
 $prevBaseUrl = $env:ANTHROPIC_BASE_URL
 $prevApiKey  = $env:ANTHROPIC_API_KEY
 
