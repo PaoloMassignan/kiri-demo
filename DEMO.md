@@ -1,13 +1,26 @@
 # Kiri Demo — Test Checklist
 
-Run each step inside the Claude Code / OpenCode session started by `scripts/start.ps1` or `scripts/start.sh`.
+Run each step inside the LLM session started by `scripts/start.ps1` or `scripts/start.sh`.
+For terminal commands use whichever matches your OS:
+
+```bash
+bash scripts/kiri.sh <cmd>      # Linux / Mac
+```
+```powershell
+.\scripts\kiri.ps1 <cmd>        # Windows
+```
 
 ---
 
 ## 1. Verify Kiri is running
 
+Run directly in your terminal (outside the LLM session):
+
+```bash
+bash scripts/kiri.sh status
 ```
-What does kiri status show?
+```powershell
+.\scripts\kiri.ps1 status
 ```
 
 Expected: three protected files listed, N indexed chunks, M known symbols.
@@ -16,35 +29,30 @@ Expected: three protected files listed, N indexed chunks, M known symbols.
 
 ## 2. Ask about a protected function by name
 
+Send this message to the LLM:
+
 ```
 What does _entropy_fingerprints do?
 ```
 
-Expected: Claude explains the function using only its stub comment — no magic
-constants, no implementation details.  Check with:
+Expected: the LLM explains the function using only its stub comment — no magic
+constants, no implementation details. Kiri redacted the body before it reached
+the model. Verify with:
 
-```
+```bash
 bash scripts/kiri.sh log --tail 3
 bash scripts/kiri.sh explain --show-redacted
+```
+```powershell
+.\scripts\kiri.ps1 log --tail 3
+.\scripts\kiri.ps1 explain --show-redacted
 ```
 
 The forwarded prompt should show the function body replaced with a stub.
 
 ---
 
-## 3. Ask Claude to read a protected file
-
-```
-Read src/engine/risk_scorer.py and summarise it.
-```
-
-Expected: Claude reads the file; Kiri intercepts and redacts each function body
-before the content reaches the LLM.  The summary will describe the module at a
-high level without leaking constants like `_VELOCITY_DECAY = 0.87`.
-
----
-
-## 4. Copy-paste the body of a protected function
+## 3. Copy-paste the body of a protected function
 
 Paste this directly into the chat:
 
@@ -66,7 +74,7 @@ does not reach the LLM.
 
 ---
 
-## 5. Ask about something unprotected
+## 4. Ask about something unprotected
 
 ```
 How does Python's defaultdict work?
@@ -74,39 +82,48 @@ How does Python's defaultdict work?
 
 Expected: PASS — no protected symbols, similarity score well below threshold.
 
-```
+```bash
 bash scripts/kiri.sh log --tail 3
+```
+```powershell
+.\scripts\kiri.ps1 log --tail 3
 ```
 
 You should see a PASS entry.
 
 ---
 
-## 6. Try to extract a magic constant
+## 5. Try to extract a magic constant
 
 ```
 What is the exact value of _VELOCITY_DECAY used in the scoring engine?
 ```
 
-Expected: Claude cannot answer accurately because the value was redacted.
-It may say something like "the implementation is confidential".
+Expected: the LLM cannot answer accurately because the value was redacted.
+It may say the implementation is not available or the constant is unknown.
 
 ---
 
-## 7. Inspect a custom prompt
+## 6. Inspect a custom prompt (terminal)
 
-```
+```bash
 bash scripts/kiri.sh inspect "explain _shadow_update and its decay constant"
+```
+```powershell
+.\scripts\kiri.ps1 inspect "explain _shadow_update and its decay constant"
 ```
 
 Expected: REDACT — `_shadow_update` is a protected symbol.
 
 ---
 
-## 8. Check the full audit log
+## 7. Check the full audit log
 
-```
+```bash
 bash scripts/kiri.sh log --tail 20
+```
+```powershell
+.\scripts\kiri.ps1 log --tail 20
 ```
 
 Review the decision column: PASS, REDACT, or BLOCK.
@@ -116,9 +133,24 @@ BLOCK means Kiri detected explicit intent to extract IP and rejected the request
 
 ## What to try next
 
-- Ask Claude to improve one of the algorithms — it will work with stubs only.
-- Add a new file: `bash scripts/kiri.sh add src/engine/fraud_detector.py`
-  (already protected, so this is a no-op — try adding a new file of your own).
-- Remove protection: `bash scripts/kiri.sh rm src/utils/token_bucket.py`
-  then ask about `AdaptiveTokenBucket` — it will now pass through.
-- Re-add it: `bash scripts/kiri.sh add src/utils/token_bucket.py`
+- Ask the LLM to improve one of the algorithms — it will work with stubs only.
+- Remove protection and re-add it:
+
+```bash
+bash scripts/kiri.sh rm src/utils/token_bucket.py
+# ask about AdaptiveTokenBucket — now passes through
+bash scripts/kiri.sh add src/utils/token_bucket.py
+# protection restored
+```
+```powershell
+.\scripts\kiri.ps1 rm src/utils/token_bucket.py
+# ask about AdaptiveTokenBucket — now passes through
+.\scripts\kiri.ps1 add src/utils/token_bucket.py
+# protection restored
+```
+
+---
+
+> **Local mode note** (Option A — free local LLM): response quality is lower
+> than Claude, but Kiri's redaction works identically. The demo steps above are
+> designed to work with any model.
