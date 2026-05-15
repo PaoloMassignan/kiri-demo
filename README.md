@@ -41,23 +41,13 @@ Pick one of the three options below.
 
 ---
 
-#### Option A — Free local mode (no cloud account)
-
-Nothing to configure. Start with the `-Local` / `local` flag (Step 3) and the
-demo runs entirely on your machine using Ollama. Requires
-[OpenCode](https://opencode.ai) (Claude Code requires a real Anthropic session).
-
-> First run also downloads the LiteLLM image (~1 GB). Subsequent starts are instant.
-
----
-
-#### Option B — OAuth passthrough (Claude Pro/Max or OpenCode subscription)
+#### Option A — OAuth passthrough (Claude Pro/Max or OpenCode subscription)
 
 Nothing to configure — skip to Step 3.
 
 ---
 
-#### Option C — Anthropic API key
+#### Option B — Anthropic API key
 
 Put your real Anthropic key in `.kiri/upstream.key` (gitignored):
 
@@ -74,22 +64,32 @@ Then set `oauth_passthrough: false` in `.kiri/config.yaml` and copy
 
 ---
 
+#### Option C — Free local mode (no cloud account)
+
+Nothing to configure. Start with the `-Local` / `local` flag (Step 3) and the
+demo runs entirely on your machine using Ollama. Requires
+[OpenCode](https://opencode.ai) (Claude Code requires a real Anthropic session).
+
+> First run also downloads the LiteLLM image (~1 GB). Subsequent starts are instant.
+
+---
+
 ### Step 3 — Start
 
-**Free local mode (Option A)**
-```bash
-bash scripts/start.sh local        # Linux / Mac
-```
-```powershell
-.\scripts\start.ps1 -Local         # Windows
-```
-
-**Cloud mode (Options B / C)**
+**Cloud mode (Options A / B)**
 ```bash
 bash scripts/start.sh              # Linux / Mac
 ```
 ```powershell
 .\scripts\start.ps1                # Windows
+```
+
+**Free local mode (Option C)**
+```bash
+bash scripts/start.sh local        # Linux / Mac
+```
+```powershell
+.\scripts\start.ps1 -Local         # Windows
 ```
 
 The script:
