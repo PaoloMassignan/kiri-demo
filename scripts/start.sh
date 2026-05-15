@@ -68,32 +68,29 @@ else
     TOOL_API_KEY="$ANTHROPIC_API_KEY"
 fi
 
-# ── Start services if not running ─────────────────────────────────────────────
-RUNNING=$(docker compose "${COMPOSE_PROFILE_ARGS[@]}" --project-directory "$DEMO_DIR" ps --services --filter status=running 2>/dev/null | grep -c "^kiri$" || true)
-if [[ "$RUNNING" -eq 0 ]]; then
-    echo "Starting Kiri..."
-    export WORKSPACE_HOST="$DEMO_DIR"
-    docker compose "${COMPOSE_PROFILE_ARGS[@]}" --project-directory "$DEMO_DIR" up -d
+# ── Start / update services ────────────────────────────────────────────────────
+# Always run 'up -d': docker compose recreates kiri if ANTHROPIC_BASE_URL
+# changed (e.g. switching between cloud and local mode), and is a no-op otherwise.
+echo "Starting Kiri..."
+export WORKSPACE_HOST="$DEMO_DIR"
+docker compose "${COMPOSE_PROFILE_ARGS[@]}" --project-directory "$DEMO_DIR" up -d
 
-    echo -n "Waiting for Kiri to be ready"
-    STARTED=false
-    for i in $(seq 1 30); do
-        if curl -sf http://localhost:8765/health >/dev/null 2>&1; then
-            echo " ready."
-            STARTED=true
-            break
-        fi
-        echo -n "."
-        sleep 2
-    done
-    if [[ "$STARTED" == "false" ]]; then
-        echo ""
-        echo "Kiri did not become ready in 60 s." >&2
-        echo "Check logs: docker compose --project-directory '$DEMO_DIR' logs kiri" >&2
-        exit 1
+echo -n "Waiting for Kiri to be ready"
+STARTED=false
+for i in $(seq 1 30); do
+    if curl -sf http://localhost:8765/health >/dev/null 2>&1; then
+        echo " ready."
+        STARTED=true
+        break
     fi
-else
-    echo "Kiri already running."
+    echo -n "."
+    sleep 2
+done
+if [[ "$STARTED" == "false" ]]; then
+    echo ""
+    echo "Kiri did not become ready in 60 s." >&2
+    echo "Check logs: docker compose --project-directory '$DEMO_DIR' logs kiri" >&2
+    exit 1
 fi
 
 # ── Pick tool ──────────────────────────────────────────────────────────────────

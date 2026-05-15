@@ -69,30 +69,27 @@ if ($Local) {
     $ToolApiKey = $ApiKey
 }
 
-# --- Start services if not running --------------------------------------------
-$running = docker compose @ComposeArgs ps --services --filter status=running 2>$null | Select-String "^kiri$"
-if (-not $running) {
-    Write-Host "Starting Kiri..." -ForegroundColor Yellow
-    $env:WORKSPACE_HOST = $DemoDir
-    docker compose @ComposeArgs up -d
+# --- Start / update services --------------------------------------------------
+# Always run 'up -d': docker compose recreates kiri if ANTHROPIC_BASE_URL
+# changed (e.g. switching between cloud and local mode), and is a no-op otherwise.
+Write-Host "Starting Kiri..." -ForegroundColor Yellow
+$env:WORKSPACE_HOST = $DemoDir
+docker compose @ComposeArgs up -d
 
-    Write-Host -NoNewline "Waiting for Kiri to be ready"
-    $ready = $false
-    for ($i = 0; $i -lt 30; $i++) {
-        Start-Sleep -Seconds 2
-        $check = Test-NetConnection -ComputerName localhost -Port 8765 -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
-        if ($check.TcpTestSucceeded) { $ready = $true; break }
-        Write-Host -NoNewline "."
-    }
-    Write-Host ""
-    if (-not $ready) {
-        Write-Error "Kiri did not become ready in 60 s.`nCheck logs: docker compose --project-directory '$DemoDir' logs kiri"
-        exit 1
-    }
-    Write-Host "Kiri ready." -ForegroundColor Green
-} else {
-    Write-Host "Kiri already running." -ForegroundColor Green
+Write-Host -NoNewline "Waiting for Kiri to be ready"
+$ready = $false
+for ($i = 0; $i -lt 30; $i++) {
+    Start-Sleep -Seconds 2
+    $check = Test-NetConnection -ComputerName localhost -Port 8765 -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+    if ($check.TcpTestSucceeded) { $ready = $true; break }
+    Write-Host -NoNewline "."
 }
+Write-Host ""
+if (-not $ready) {
+    Write-Error "Kiri did not become ready in 60 s.`nCheck logs: docker compose --project-directory '$DemoDir' logs kiri"
+    exit 1
+}
+Write-Host "Kiri ready." -ForegroundColor Green
 
 # --- Pick tool ----------------------------------------------------------------
 if ([string]::IsNullOrEmpty($Tool)) {
