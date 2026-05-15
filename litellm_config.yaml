@@ -1,5 +1,32 @@
 model_list:
+  # Claude 4.x (current family)
+  - model_name: claude-opus-4-7
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-haiku-4-5-20251001
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+
+  # Claude 3.x (legacy names tools may request)
   - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-3-5-sonnet-20240620
+    litellm_params:
+      model: ollama/qwen2.5:3b
+      api_base: http://ollama:11434
+  - model_name: claude-3-5-haiku-20241022
     litellm_params:
       model: ollama/qwen2.5:3b
       api_base: http://ollama:11434
@@ -7,11 +34,11 @@ model_list:
     litellm_params:
       model: ollama/qwen2.5:3b
       api_base: http://ollama:11434
-  - model_name: claude-opus-4-7
+  - model_name: claude-3-opus-20240229
     litellm_params:
       model: ollama/qwen2.5:3b
       api_base: http://ollama:11434
-  - model_name: claude-sonnet-4-6
+  - model_name: claude-3-sonnet-20240229
     litellm_params:
       model: ollama/qwen2.5:3b
       api_base: http://ollama:11434
