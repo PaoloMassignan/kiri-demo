@@ -71,7 +71,7 @@ esac
 if [[ -f "$_MODEL_PATH" ]]; then
     _LLM_BACKEND="llama_cpp"
     _MODEL_LINE="llm_model_path: $_MODEL_PATH"
-    echo "Local AI: enabled ($LLM_BACKEND, $(basename "$_MODEL_PATH"))"
+    echo "Local AI: enabled ($_LLM_BACKEND, $(basename "$_MODEL_PATH"))"
 else
     _LLM_BACKEND="ollama"
     _MODEL_LINE=""
@@ -101,7 +101,7 @@ export KIRI_CONFIG="$DEMO_DIR/.kiri/config.native.local"
 export WORKSPACE="$DEMO_DIR"
 [[ -f .kiri/upstream.key ]] && export KIRI_UPSTREAM_KEY_FILE="$DEMO_DIR/.kiri/upstream.key"
 
-kiri serve &
+kiri serve >.kiri/kiri-serve.log 2>&1 &
 KIRI_PID=$!
 
 # ── Health check ──────────────────────────────────────────────────────────────
@@ -119,7 +119,8 @@ done
 if [[ "$STARTED" == "false" ]]; then
     echo ""
     echo "Kiri did not become ready in 60 s." >&2
-    echo "Check if the port 8765 is already in use, or re-run with verbose logging." >&2
+    echo "Check the log:  cat .kiri/kiri-serve.log" >&2
+    echo "Or check port:  lsof -ti :8765" >&2
     kill "$KIRI_PID" 2>/dev/null || true
     rm -f .kiri/.mode
     exit 1

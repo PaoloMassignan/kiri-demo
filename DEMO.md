@@ -1,6 +1,12 @@
 # Kiri Demo — Test Checklist
 
-Run each step inside the LLM session started by `scripts/start.ps1` or `scripts/start.sh`.
+Run each step inside the LLM session started by one of:
+
+| Mode | Linux / macOS | Windows |
+|---|---|---|
+| **Native ★** | `bash scripts/start-native.sh` | `.\scripts\start-native.ps1` |
+| Docker | `bash scripts/start.sh` | `.\scripts\start.ps1` |
+
 For terminal commands use whichever matches your OS:
 
 ```bash
