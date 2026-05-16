@@ -65,10 +65,8 @@ The script:
 6. Opens Claude Code or OpenCode
 7. Stops Kiri and restores your environment when you exit
 
-> **L3 classifier (local LLM):** enabled automatically if you previously ran
-> `sudo kiri install` (Linux/macOS) or `kiri install` as Administrator (Windows).
-> If the model is not present, L3 fails-open — L1 (vector similarity) and
-> L2 (symbol matching) remain fully active.
+> **L3 classifier:** uses Ollama if it is running locally; otherwise fails-open.
+> L1 (vector similarity) and L2 (symbol matching) are always active in the binary.
 
 ---
 

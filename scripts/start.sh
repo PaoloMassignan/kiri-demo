@@ -61,26 +61,8 @@ else
     fi
 fi
 
-# ── Detect GGUF model ─────────────────────────────────────────────────────────
-_MODEL_FILENAME="qwen2.5-3b-q4.gguf"
-case "$(uname -s 2>/dev/null || echo Windows)" in
-    Darwin|Linux) _MODEL_PATH="/var/lib/kiri/models/$_MODEL_FILENAME" ;;
-    *)            _MODEL_PATH="C:/ProgramData/Kiri/models/$_MODEL_FILENAME" ;;
-esac
-
-if [[ -f "$_MODEL_PATH" ]]; then
-    _LLM_BACKEND="llama_cpp"
-    _MODEL_LINE="llm_model_path: $_MODEL_PATH"
-    echo "Local AI: enabled ($_LLM_BACKEND, $(basename "$_MODEL_PATH"))"
-else
-    _LLM_BACKEND="ollama"
-    _MODEL_LINE=""
-    echo "Local AI: disabled (model not found at $_MODEL_PATH)"
-    echo "  L3 classifier will fail-open — L1 and L2 remain fully active."
-    echo "  To enable L3: sudo kiri install"
-fi
-
 # ── Generate runtime config ───────────────────────────────────────────────────
+echo "Note: L3 classifier uses Ollama when available; otherwise fails-open (L1+L2 active)."
 cat > .kiri/config.native.local <<EOF
 oauth_passthrough: $(if [[ -z "$ANTHROPIC_API_KEY" ]]; then echo "true"; else echo "false"; fi)
 similarity_threshold: 0.75
@@ -88,8 +70,6 @@ hard_block_threshold: 0.90
 action: sanitize
 proxy_port: 8765
 embedding_model: all-MiniLM-L6-v2
-llm_backend: $_LLM_BACKEND
-$(if [[ -n "$_MODEL_LINE" ]]; then echo "$_MODEL_LINE"; fi)
 EOF
 
 # ── Set mode sentinel ─────────────────────────────────────────────────────────

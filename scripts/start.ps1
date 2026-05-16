@@ -62,33 +62,16 @@ if ([string]::IsNullOrEmpty($ApiKey)) {
     $OAuthPassthrough = "false"
 }
 
-# ── Detect GGUF model ─────────────────────────────────────────────────────────
-$ModelFilename = "qwen2.5-3b-q4.gguf"
-$ModelPath     = "C:\ProgramData\Kiri\models\$ModelFilename"
-
-if (Test-Path $ModelPath) {
-    $LlmBackend  = "llama_cpp"
-    $ModelLine   = "llm_model_path: $($ModelPath -replace '\\','/')"
-    Write-Host "Local AI: enabled (llama_cpp, $ModelFilename)" -ForegroundColor Green
-} else {
-    $LlmBackend  = "ollama"
-    $ModelLine   = ""
-    Write-Host "Local AI: disabled (model not found at $ModelPath)" -ForegroundColor Yellow
-    Write-Host "  L3 classifier will fail-open — L1 and L2 remain fully active." -ForegroundColor DarkGray
-    Write-Host "  To enable L3: run 'kiri install' as Administrator." -ForegroundColor DarkGray
-}
-
 # ── Generate runtime config ───────────────────────────────────────────────────
+Write-Host "Note: L3 classifier uses Ollama when available; otherwise fails-open (L1+L2 active)." -ForegroundColor DarkGray
 $ConfigLines = @(
     "oauth_passthrough: $OAuthPassthrough",
     "similarity_threshold: 0.75",
     "hard_block_threshold: 0.90",
     "action: sanitize",
     "proxy_port: 8765",
-    "embedding_model: all-MiniLM-L6-v2",
-    "llm_backend: $LlmBackend"
+    "embedding_model: all-MiniLM-L6-v2"
 )
-if ($ModelLine) { $ConfigLines += $ModelLine }
 # Write UTF-8 without BOM (Out-File -Encoding utf8 adds BOM in PS 5.1)
 [System.IO.File]::WriteAllLines(
     (Join-Path $DemoDir ".kiri\config.native.local"),
