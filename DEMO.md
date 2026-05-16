@@ -159,8 +159,3 @@ bash scripts/kiri.sh add src/utils/token_bucket.py
 # protection restored
 ```
 
----
-
-> **Local mode note** (Option A — free local LLM): response quality is lower
-> than Claude, but Kiri's redaction works identically. The demo steps above are
-> designed to work with any model.
