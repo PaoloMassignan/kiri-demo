@@ -12,6 +12,8 @@
 .kiri/config.native.local
 .kiri/.mode
 .kiri/audit.log
+.kiri/kiri-serve.log
+.kiri/kiri-serve.err
 
 # Python
 __pycache__/

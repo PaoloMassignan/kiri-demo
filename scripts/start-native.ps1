@@ -15,6 +15,9 @@ param(
     [string]$Tool = ""
 )
 
+# Suppress Invoke-WebRequest progress bars (PS 5.1 shows them by default — very slow)
+$ProgressPreference = 'SilentlyContinue'
+
 $DemoDir = Split-Path -Parent $PSScriptRoot
 Set-Location $DemoDir
 
@@ -86,10 +89,16 @@ $ConfigLines = @(
     "llm_backend: $LlmBackend"
 )
 if ($ModelLine) { $ConfigLines += $ModelLine }
-$ConfigLines | Out-File ".kiri\config.native.local" -Encoding utf8
+# Write UTF-8 without BOM (Out-File -Encoding utf8 adds BOM in PS 5.1)
+[System.IO.File]::WriteAllLines(
+    (Join-Path $DemoDir ".kiri\config.native.local"),
+    $ConfigLines
+)
 
 # ── Set mode sentinel ─────────────────────────────────────────────────────────
-"native" | Out-File ".kiri\.mode" -Encoding ascii -NoNewline
+[System.IO.File]::WriteAllText(
+    (Join-Path $DemoDir ".kiri\.mode"), "native"
+)
 
 # ── Start kiri serve ──────────────────────────────────────────────────────────
 Write-Host "Starting Kiri (native)..." -ForegroundColor Yellow
@@ -99,7 +108,10 @@ if (Test-Path ".kiri\upstream.key") {
     $env:KIRI_UPSTREAM_KEY_FILE = Join-Path $DemoDir ".kiri\upstream.key"
 }
 
-$KiriProc = Start-Process kiri -ArgumentList "serve" -PassThru -NoNewWindow
+$KiriLog = Join-Path $DemoDir ".kiri\kiri-serve.log"
+$KiriErr = Join-Path $DemoDir ".kiri\kiri-serve.err"
+$KiriProc = Start-Process kiri -ArgumentList "serve" -PassThru -NoNewWindow `
+    -RedirectStandardOutput $KiriLog -RedirectStandardError $KiriErr
 
 # ── Health check ──────────────────────────────────────────────────────────────
 Write-Host -NoNewline "Waiting for Kiri to be ready"
@@ -114,7 +126,13 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 Write-Host ""
 if (-not $ready) {
-    Write-Error "Kiri did not become ready in 60 s.`nCheck if port 8765 is already in use."
+    Write-Host ""
+    Write-Host "Kiri did not become ready in 60 s." -ForegroundColor Red
+    Write-Host "Check the logs:" -ForegroundColor Red
+    Write-Host "  Get-Content .kiri\kiri-serve.log" -ForegroundColor DarkGray
+    Write-Host "  Get-Content .kiri\kiri-serve.err" -ForegroundColor DarkGray
+    Write-Host "Or check if port 8765 is already in use:" -ForegroundColor DarkGray
+    Write-Host "  netstat -ano | findstr :8765" -ForegroundColor DarkGray
     Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
     Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
     exit 1
