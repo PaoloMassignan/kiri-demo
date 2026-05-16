@@ -1,7 +1,7 @@
 # Thin wrapper: runs kiri CLI commands in whichever mode is active.
 #
 #   Native mode  — runs kiri directly against the demo workspace.
-#                  Active when start-native.ps1 has written .kiri\.mode=native.
+#                  Active when start.ps1 has written .kiri\.mode=native.
 #   Docker mode  — forwards the command into the kiri container (original behaviour).
 #                  Active when start.ps1 is used (default / rollback).
 #

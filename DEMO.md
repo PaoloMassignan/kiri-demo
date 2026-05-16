@@ -4,8 +4,8 @@ Run each step inside the LLM session started by one of:
 
 | Mode | Linux / macOS | Windows |
 |---|---|---|
-| **Native ★** | `bash scripts/start-native.sh` | `.\scripts\start-native.ps1` |
-| Docker | `bash scripts/start.sh` | `.\scripts\start.ps1` |
+| **Native ★** | `bash scripts/start.sh` | `.\scripts\start.ps1` |
+| Docker | `bash scripts/start-docker.sh` | `.\scripts\start-docker.ps1` |
 
 For terminal commands use whichever matches your OS:
 

@@ -50,10 +50,10 @@ echo "sk-ant-YOUR-KEY" > .kiri/upstream.key      # Linux / Mac
 ### Step 4 — Start
 
 ```bash
-bash scripts/start-native.sh              # Linux / macOS
+bash scripts/start.sh              # Linux / macOS
 ```
 ```powershell
-.\scripts\start-native.ps1               # Windows
+.\scripts\start.ps1               # Windows
 ```
 
 The script:
@@ -104,12 +104,12 @@ runs entirely on your machine using Ollama. Requires
 ### Step 4 (Docker) — Start
 
 ```bash
-bash scripts/start.sh              # Linux / macOS  (cloud mode)
-bash scripts/start.sh local        # Linux / macOS  (local Ollama mode)
+bash scripts/start-docker.sh              # Linux / macOS  (cloud mode)
+bash scripts/start-docker.sh local        # Linux / macOS  (local Ollama mode)
 ```
 ```powershell
-.\scripts\start.ps1                # Windows (cloud mode)
-.\scripts\start.ps1 -Local         # Windows (local Ollama mode)
+.\scripts\start-docker.ps1                # Windows (cloud mode)
+.\scripts\start-docker.ps1 -Local         # Windows (local Ollama mode)
 ```
 
 > First run pulls the Kiri image (~500 MB) and the `qwen2.5:3b` model
@@ -136,7 +136,7 @@ Follow the guided test sequence in **[DEMO.md](DEMO.md)**.
 | **Dependencies** | `kiri` binary only | Docker Desktop |
 | **L3 classifier** | `llama-cpp-python` (in-process) | Ollama sidecar |
 | **Startup time** | ~3 s | ~30 s (image pull on first run) |
-| **Rollback** | `bash scripts/start.sh` | — |
+| **Rollback** | `bash scripts/start-docker.sh` | — |
 
 ---
 
@@ -146,14 +146,14 @@ Follow the guided test sequence in **[DEMO.md](DEMO.md)**.
 .kiri/
   config.yaml            committed — Docker proxy settings
   config.native.yaml     committed — native proxy settings template
-  config.native.local    gitignored — generated at runtime by start-native.sh
+  config.native.local    gitignored — generated at runtime by start.sh
   secrets                committed — list of protected files
   upstream.key           gitignored — your real Anthropic key (API key mode only)
   index/                 gitignored — vector index, rebuilt locally
   keys/                  gitignored — kiri kr- keys, per developer
 scripts/
-  start-native.sh / .ps1   ★ native start (Linux-Mac / Windows)
-  start.sh / .ps1           Docker start (Linux-Mac / Windows)
+  start.sh / .ps1              ★ native start (Linux-Mac / Windows)
+  start-docker.sh / .ps1       Docker start (Linux-Mac / Windows)
   kiri.sh   / .ps1          kiri CLI wrapper — auto-detects native vs Docker
 src/
   engine/risk_scorer.py    fictional Helios v2.3 risk engine

@@ -1,135 +1,181 @@
-# Starts Kiri and launches Claude Code or OpenCode with the proxy configured.
-# Restores the original environment on exit.
+# Starts Kiri in native mode (no Docker, no Ollama) and launches Claude Code
+# or OpenCode with the proxy configured.  Stops the kiri process on exit.
 #
 # Usage:
-#   .\scripts\start.ps1                   # OAuth or API key mode (Anthropic/Claude cloud)
-#   .\scripts\start.ps1 -Local            # Local Ollama mode (no cloud account needed)
-#   .\scripts\start.ps1 -Tool opencode    # Force a specific tool
+#   .scriptsstart.ps1              # OAuth or API key mode
+#   .scriptsstart.ps1 -Tool claude
+#   .scriptsstart.ps1 -Tool opencode
+#
+# Prerequisites:
+#   kiri.exe in PATH (download from https://github.com/PaoloMassignan/kiri/releases)
+#   For L3 classifier: run "kiri install" as Administrator first.
+#
+# Fallback to Docker: .scriptsstart-docker.ps1
 param(
-    [string]$Tool  = "",
-    [switch]$Local
+    [string]$Tool = ""
 )
+
+# Suppress Invoke-WebRequest progress bars (PS 5.1 shows them by default — very slow)
+$ProgressPreference = 'SilentlyContinue'
 
 $DemoDir = Split-Path -Parent $PSScriptRoot
 Set-Location $DemoDir
 
-# --- Docker check -------------------------------------------------------------
-& docker ps *>$null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Docker not running - starting Docker Desktop..." -ForegroundColor Yellow
-    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-    $ready = $false
-    for ($i = 0; $i -lt 30; $i++) {
-        Start-Sleep -Seconds 2
-        & docker ps *>$null
-        if ($LASTEXITCODE -eq 0) { $ready = $true; break }
-    }
-    if (-not $ready) { Write-Error "Docker did not start in 60 s."; exit 1 }
-    Write-Host "Docker ready." -ForegroundColor Green
+# ── Check kiri binary ─────────────────────────────────────────────────────────
+if (-not (Get-Command kiri -ErrorAction SilentlyContinue)) {
+    Write-Error @"
+'kiri' not found in PATH.
+
+Install the native binary:
+  https://github.com/PaoloMassignan/kiri/releases/latest
+
+Or fall back to Docker mode:
+  .\scripts\start.ps1
+"@
+    exit 1
 }
 
-# --- Mode setup ---------------------------------------------------------------
-$ComposeArgs = @("--project-directory", $DemoDir)
+# ── Key setup ─────────────────────────────────────────────────────────────────
+if (Test-Path ".env") {
+    Get-Content ".env" | Where-Object { $_ -notmatch '^\s*#' -and $_ -match '=' } | ForEach-Object {
+        $name, $value = $_ -split '=', 2
+        $name = $name.Trim(); $value = $value.Trim()
+        if ($name) { Set-Item "Env:$name" $value }
+    }
+}
 
-if ($Local) {
-    Write-Host "Mode: Local LLM (Ollama/qwen2.5:3b via LiteLLM - no cloud account needed)" -ForegroundColor Cyan
+$ApiKey = if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY } else { "" }
+
+if ([string]::IsNullOrEmpty($ApiKey)) {
+    Write-Host "Mode: OAuth passthrough" -ForegroundColor Cyan
     New-Item -ItemType Directory -Force -Path ".kiri" | Out-Null
     if (-not (Test-Path ".kiri\upstream.key")) {
-        "local-mode-placeholder" | Out-File -FilePath ".kiri\upstream.key" -Encoding ascii -NoNewline
+        "oauth-passthrough-placeholder" | Out-File ".kiri\upstream.key" -Encoding ascii -NoNewline
     }
-    # Tell kiri to forward to LiteLLM instead of the real Anthropic API
-    $env:KIRI_UPSTREAM_URL = "http://litellm:4000"
-    $ComposeArgs += @("--profile", "local")
-    $ToolApiKey = "sk-ant-local-demo"
+    $OAuthPassthrough = "true"
 } else {
-    # --- Load .env ------------------------------------------------------------
-    if (Test-Path ".env") {
-        Get-Content ".env" | Where-Object { $_ -notmatch '^\s*#' -and $_ -match '\S' -and $_ -match '=' } | ForEach-Object {
-            $name, $value = $_ -split '=', 2
-            $name = $name.Trim(); $value = $value.Trim()
-            if ($name) { Set-Item "Env:$name" $value }
-        }
+    Write-Host "Mode: API key ($($ApiKey.Substring(0, [Math]::Min(8, $ApiKey.Length)))...)" -ForegroundColor Cyan
+    if (-not (Test-Path ".kiri\upstream.key")) {
+        Write-Error ".kiri\upstream.key not found.`nCreate it: 'sk-ant-YOUR-KEY' | Out-File .kiri\upstream.key"
+        exit 1
     }
-
-    $ApiKey = if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY } else { "" }
-
-    if ([string]::IsNullOrEmpty($ApiKey)) {
-        Write-Host "Mode: OAuth passthrough" -ForegroundColor Cyan
-        New-Item -ItemType Directory -Force -Path ".kiri" | Out-Null
-        if (-not (Test-Path ".kiri\upstream.key")) {
-            "oauth-passthrough-placeholder" | Out-File -FilePath ".kiri\upstream.key" -Encoding ascii -NoNewline
-        }
-    } else {
-        Write-Host "Mode: API key ($($ApiKey.Substring(0, [Math]::Min(8, $ApiKey.Length)))...)" -ForegroundColor Cyan
-        if (-not (Test-Path ".kiri\upstream.key")) {
-            Write-Error ".kiri\upstream.key not found.`nCreate it: 'sk-ant-YOUR-KEY' | Out-File .kiri\upstream.key"
-            exit 1
-        }
-    }
-    $ToolApiKey = $ApiKey
+    $OAuthPassthrough = "false"
 }
 
-# --- Start / update services --------------------------------------------------
-# Always run 'up -d': docker compose recreates kiri if ANTHROPIC_BASE_URL
-# changed (e.g. switching between cloud and local mode), and is a no-op otherwise.
-Write-Host "Starting Kiri..." -ForegroundColor Yellow
-$env:WORKSPACE_HOST = $DemoDir
-docker compose @ComposeArgs up -d
+# ── Detect GGUF model ─────────────────────────────────────────────────────────
+$ModelFilename = "qwen2.5-3b-q4.gguf"
+$ModelPath     = "C:\ProgramData\Kiri\models\$ModelFilename"
 
+if (Test-Path $ModelPath) {
+    $LlmBackend  = "llama_cpp"
+    $ModelLine   = "llm_model_path: $($ModelPath -replace '\\','/')"
+    Write-Host "Local AI: enabled (llama_cpp, $ModelFilename)" -ForegroundColor Green
+} else {
+    $LlmBackend  = "ollama"
+    $ModelLine   = ""
+    Write-Host "Local AI: disabled (model not found at $ModelPath)" -ForegroundColor Yellow
+    Write-Host "  L3 classifier will fail-open — L1 and L2 remain fully active." -ForegroundColor DarkGray
+    Write-Host "  To enable L3: run 'kiri install' as Administrator." -ForegroundColor DarkGray
+}
+
+# ── Generate runtime config ───────────────────────────────────────────────────
+$ConfigLines = @(
+    "oauth_passthrough: $OAuthPassthrough",
+    "similarity_threshold: 0.75",
+    "hard_block_threshold: 0.90",
+    "action: sanitize",
+    "proxy_port: 8765",
+    "embedding_model: all-MiniLM-L6-v2",
+    "llm_backend: $LlmBackend"
+)
+if ($ModelLine) { $ConfigLines += $ModelLine }
+# Write UTF-8 without BOM (Out-File -Encoding utf8 adds BOM in PS 5.1)
+[System.IO.File]::WriteAllLines(
+    (Join-Path $DemoDir ".kiri\config.native.local"),
+    $ConfigLines
+)
+
+# ── Set mode sentinel ─────────────────────────────────────────────────────────
+[System.IO.File]::WriteAllText(
+    (Join-Path $DemoDir ".kiri\.mode"), "native"
+)
+
+# ── Start kiri serve ──────────────────────────────────────────────────────────
+Write-Host "Starting Kiri (native)..." -ForegroundColor Yellow
+$env:KIRI_CONFIG            = Join-Path $DemoDir ".kiri\config.native.local"
+$env:WORKSPACE              = $DemoDir
+if (Test-Path ".kiri\upstream.key") {
+    $env:KIRI_UPSTREAM_KEY_FILE = Join-Path $DemoDir ".kiri\upstream.key"
+}
+
+$KiriLog = Join-Path $DemoDir ".kiri\kiri-serve.log"
+$KiriErr = Join-Path $DemoDir ".kiri\kiri-serve.err"
+$KiriProc = Start-Process kiri -ArgumentList "serve" -PassThru -NoNewWindow `
+    -RedirectStandardOutput $KiriLog -RedirectStandardError $KiriErr
+
+# ── Health check ──────────────────────────────────────────────────────────────
 Write-Host -NoNewline "Waiting for Kiri to be ready"
 $ready = $false
 for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Seconds 2
-    $check = Test-NetConnection -ComputerName localhost -Port 8765 -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
-    if ($check.TcpTestSucceeded) { $ready = $true; break }
+    try {
+        $null = Invoke-WebRequest -Uri "http://localhost:8765/health" -UseBasicParsing -TimeoutSec 2
+        $ready = $true; break
+    } catch {}
     Write-Host -NoNewline "."
 }
 Write-Host ""
 if (-not $ready) {
-    Write-Error "Kiri did not become ready in 60 s.`nCheck logs: docker compose --project-directory '$DemoDir' logs kiri"
+    Write-Host ""
+    Write-Host "Kiri did not become ready in 60 s." -ForegroundColor Red
+    Write-Host "Check the logs:" -ForegroundColor Red
+    Write-Host "  Get-Content .kiri\kiri-serve.log" -ForegroundColor DarkGray
+    Write-Host "  Get-Content .kiri\kiri-serve.err" -ForegroundColor DarkGray
+    Write-Host "Or check if port 8765 is already in use:" -ForegroundColor DarkGray
+    Write-Host "  netstat -ano | findstr :8765" -ForegroundColor DarkGray
+    Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
+    Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
     exit 1
 }
 Write-Host "Kiri ready." -ForegroundColor Green
 
-# --- Pick tool ----------------------------------------------------------------
+# ── Pick tool ─────────────────────────────────────────────────────────────────
 if ([string]::IsNullOrEmpty($Tool)) {
-    if ($Local) {
-        # Local mode: prefer OpenCode (Claude Code needs a real Anthropic session)
-        if (Get-Command opencode -ErrorAction SilentlyContinue)    { $Tool = "opencode" }
-        elseif (Get-Command claude -ErrorAction SilentlyContinue)  { $Tool = "claude" }
-    } else {
-        if (Get-Command claude -ErrorAction SilentlyContinue)      { $Tool = "claude" }
-        elseif (Get-Command opencode -ErrorAction SilentlyContinue){ $Tool = "opencode" }
-    }
+    if   (Get-Command claude   -ErrorAction SilentlyContinue) { $Tool = "claude" }
+    elseif (Get-Command opencode -ErrorAction SilentlyContinue) { $Tool = "opencode" }
     if ([string]::IsNullOrEmpty($Tool)) {
-        Write-Error "Neither 'claude' nor 'opencode' found in PATH.`nInstall one and retry, or pass: .\scripts\start.ps1 -Tool opencode"
+        Write-Error "Neither 'claude' nor 'opencode' found.`nInstall one or pass: .scriptsstart.ps1 -Tool opencode"
+        Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
+        Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
         exit 1
     }
 }
 Write-Host "Launching $Tool through Kiri..." -ForegroundColor Cyan
 
-# --- Set env, launch, restore -------------------------------------------------
+# ── Set env, launch, restore ──────────────────────────────────────────────────
 $prevBaseUrl = $env:ANTHROPIC_BASE_URL
 $prevApiKey  = $env:ANTHROPIC_API_KEY
 
 $env:ANTHROPIC_BASE_URL = "http://localhost:8765"
-if ([string]::IsNullOrEmpty($ToolApiKey)) {
+if ([string]::IsNullOrEmpty($ApiKey)) {
     Remove-Item Env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue
 } else {
-    $env:ANTHROPIC_API_KEY = $ToolApiKey
+    $env:ANTHROPIC_API_KEY = $ApiKey
 }
 
 try {
     & $Tool
 } finally {
+    # Restore env
     if ($null -eq $prevBaseUrl) { Remove-Item Env:ANTHROPIC_BASE_URL -ErrorAction SilentlyContinue }
     else { $env:ANTHROPIC_BASE_URL = $prevBaseUrl }
-
     if ($null -eq $prevApiKey) { Remove-Item Env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue }
     else { $env:ANTHROPIC_API_KEY = $prevApiKey }
-
-    if ($Local) { Remove-Item Env:KIRI_UPSTREAM_URL -ErrorAction SilentlyContinue }
+    Remove-Item Env:KIRI_CONFIG -ErrorAction SilentlyContinue
+    Remove-Item Env:WORKSPACE   -ErrorAction SilentlyContinue
+    Remove-Item Env:KIRI_UPSTREAM_KEY_FILE -ErrorAction SilentlyContinue
+    # Stop kiri and clear sentinel
+    Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
+    Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
+    Write-Host "Session ended. Kiri stopped." -ForegroundColor DarkGray
 }
-
-Write-Host "Session ended. Kiri is still running." -ForegroundColor DarkGray
-Write-Host "To stop: docker compose --project-directory '$DemoDir' down" -ForegroundColor DarkGray
