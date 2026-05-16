@@ -2,15 +2,14 @@
 # or OpenCode with the proxy configured.  Stops the kiri process on exit.
 #
 # Usage:
-#   .scriptsstart.ps1              # OAuth or API key mode
-#   .scriptsstart.ps1 -Tool claude
-#   .scriptsstart.ps1 -Tool opencode
+#   .\scripts\start.ps1              # OAuth or API key mode
+#   .\scripts\start.ps1 -Tool claude
+#   .\scripts\start.ps1 -Tool opencode
 #
 # Prerequisites:
 #   kiri.exe in PATH (download from https://github.com/PaoloMassignan/kiri/releases)
-#   For L3 classifier: run "kiri install" as Administrator first.
 #
-# Fallback to Docker: .scriptsstart-docker.ps1
+# Fallback to Docker: .\scripts\start-docker.ps1
 param(
     [string]$Tool = ""
 )
@@ -30,7 +29,7 @@ Install the native binary:
   https://github.com/PaoloMassignan/kiri/releases/latest
 
 Or fall back to Docker mode:
-  .\scripts\start.ps1
+  .\scripts\start-docker.ps1
 "@
     exit 1
 }
@@ -109,7 +108,6 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 Write-Host ""
 if (-not $ready) {
-    Write-Host ""
     Write-Host "Kiri did not become ready in 60 s." -ForegroundColor Red
     Write-Host "Check the logs:" -ForegroundColor Red
     Write-Host "  Get-Content .kiri\kiri-serve.log" -ForegroundColor DarkGray
@@ -127,7 +125,7 @@ if ([string]::IsNullOrEmpty($Tool)) {
     if   (Get-Command claude   -ErrorAction SilentlyContinue) { $Tool = "claude" }
     elseif (Get-Command opencode -ErrorAction SilentlyContinue) { $Tool = "opencode" }
     if ([string]::IsNullOrEmpty($Tool)) {
-        Write-Error "Neither 'claude' nor 'opencode' found.`nInstall one or pass: .scriptsstart.ps1 -Tool opencode"
+        Write-Error "Neither 'claude' nor 'opencode' found.`nInstall one or pass: .\scripts\start.ps1 -Tool opencode"
         Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
         Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
         exit 1
