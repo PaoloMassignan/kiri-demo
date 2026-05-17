@@ -113,7 +113,7 @@ $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Seconds 2
     try {
-        $null = Invoke-WebRequest -Uri "http://localhost:8765/health" -UseBasicParsing -TimeoutSec 2
+        $null = Invoke-WebRequest -Uri "http://127.0.0.1:8765/health" -UseBasicParsing -TimeoutSec 2
         $ready = $true; break
     } catch {}
     Write-Host -NoNewline "."
