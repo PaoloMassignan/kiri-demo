@@ -14,7 +14,7 @@ param(
     [string]$Tool = ""
 )
 
-# Suppress Invoke-WebRequest progress bars (PS 5.1 shows them by default — very slow)
+# Suppress Invoke-WebRequest progress bars (PS 5.1 shows them by default - very slow)
 $ProgressPreference = 'SilentlyContinue'
 
 $DemoDir = Split-Path -Parent $PSScriptRoot
@@ -107,7 +107,7 @@ $KiriErr = Join-Path $DemoDir ".kiri\kiri-serve.err"
 $KiriProc = Start-Process kiri -ArgumentList "serve" -PassThru -NoNewWindow `
     -RedirectStandardOutput $KiriLog -RedirectStandardError $KiriErr
 
-# ── Health check (120 s — first run extracts a large binary) ──────────────────
+# ── Health check (120 s - first run extracts a large binary) ─────────────────
 Write-Host -NoNewline "Waiting for Kiri to be ready"
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
@@ -152,7 +152,7 @@ if ([string]::IsNullOrEmpty($Tool)) {
         Write-Host "  claude   # or opencode" -ForegroundColor DarkGray
         Write-Host ""
         Write-Host "Press Ctrl+C to stop Kiri when done." -ForegroundColor DarkGray
-        # Keep kiri running — wait for Ctrl+C
+        # Keep kiri running - wait for Ctrl+C
         try { while ($true) { Start-Sleep -Seconds 5 } } finally {}
         Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
         Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
@@ -187,6 +187,6 @@ try {
     Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
     Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
     Write-Host ""
-    Write-Host "Session ended — Kiri stopped." -ForegroundColor DarkGray
+    Write-Host "Session ended - Kiri stopped." -ForegroundColor DarkGray
     Write-Host "To start a new session: .\scripts\start.ps1" -ForegroundColor DarkGray
 }
