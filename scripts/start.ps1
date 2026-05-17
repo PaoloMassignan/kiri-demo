@@ -104,8 +104,13 @@ if (Test-Path ".kiri\upstream.key") {
 
 $KiriLog = Join-Path $DemoDir ".kiri\kiri-serve.log"
 $KiriErr = Join-Path $DemoDir ".kiri\kiri-serve.err"
+# Clear ANTHROPIC_BASE_URL before starting kiri so it does not inherit
+# the proxy URL and forward requests back to itself (self-loop -> 502).
+$savedBaseUrl = $env:ANTHROPIC_BASE_URL
+Remove-Item Env:ANTHROPIC_BASE_URL -ErrorAction SilentlyContinue
 $KiriProc = Start-Process kiri -ArgumentList "serve" -PassThru -NoNewWindow `
     -RedirectStandardOutput $KiriLog -RedirectStandardError $KiriErr
+if ($savedBaseUrl) { $env:ANTHROPIC_BASE_URL = $savedBaseUrl }
 
 # ── Health check (120 s - first run extracts a large binary) ─────────────────
 Write-Host -NoNewline "Waiting for Kiri to be ready"
