@@ -57,13 +57,12 @@ bash scripts/start.sh              # Linux / macOS
 ```
 
 The script:
-1. Detects whether a GGUF model is available (`kiri install` downloads it once)
-2. Generates a runtime config in `.kiri/config.native.local`
-3. Starts `kiri serve` as a background process
-4. Waits for the proxy to be ready
-5. Sets `ANTHROPIC_BASE_URL=http://localhost:8765` for this session only
-6. Opens Claude Code or OpenCode
-7. Stops Kiri and restores your environment when you exit
+1. Generates a runtime config in `.kiri/config.native.local`
+2. Starts `kiri serve` as a background process
+3. Waits for the proxy to be ready (up to 120 s on first run)
+4. Sets `ANTHROPIC_BASE_URL=http://localhost:8765` for this session only
+5. Opens Claude Code or OpenCode
+6. Stops Kiri and restores your environment when you exit
 
 > **L3 classifier:** uses Ollama if it is running locally; otherwise fails-open.
 > L1 (vector similarity) and L2 (symbol matching) are always active in the binary.

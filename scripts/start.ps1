@@ -82,6 +82,18 @@ $ConfigLines = @(
     (Join-Path $DemoDir ".kiri\.mode"), "native"
 )
 
+# ── Check port availability ───────────────────────────────────────────────────
+$portCheck = netstat -ano 2>$null | Select-String "127\.0\.0\.1:8765\s"
+if (-not $portCheck) { $portCheck = netstat -ano 2>$null | Select-String "0\.0\.0\.0:8765\s" }
+if ($portCheck) {
+    $existingPid = ($portCheck[0].ToString().Trim() -split '\s+')[-1]
+    Write-Host "Port 8765 is already in use (PID $existingPid)." -ForegroundColor Red
+    Write-Host "Stop the existing process first:" -ForegroundColor Red
+    Write-Host "  Stop-Process -Id $existingPid -Force" -ForegroundColor Yellow
+    Write-Host "Then re-run this script." -ForegroundColor DarkGray
+    exit 1
+}
+
 # ── Start kiri serve ──────────────────────────────────────────────────────────
 Write-Host "Starting Kiri (native)..." -ForegroundColor Yellow
 $env:KIRI_CONFIG            = Join-Path $DemoDir ".kiri\config.native.local"
@@ -95,10 +107,10 @@ $KiriErr = Join-Path $DemoDir ".kiri\kiri-serve.err"
 $KiriProc = Start-Process kiri -ArgumentList "serve" -PassThru -NoNewWindow `
     -RedirectStandardOutput $KiriLog -RedirectStandardError $KiriErr
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# ── Health check (120 s — first run extracts a large binary) ──────────────────
 Write-Host -NoNewline "Waiting for Kiri to be ready"
 $ready = $false
-for ($i = 0; $i -lt 30; $i++) {
+for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Seconds 2
     try {
         $null = Invoke-WebRequest -Uri "http://localhost:8765/health" -UseBasicParsing -TimeoutSec 2
@@ -108,12 +120,15 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 Write-Host ""
 if (-not $ready) {
-    Write-Host "Kiri did not become ready in 60 s." -ForegroundColor Red
-    Write-Host "Check the logs:" -ForegroundColor Red
+    Write-Host "Kiri did not become ready in 120 s." -ForegroundColor Red
+    $errTail = Get-Content $KiriErr -ErrorAction SilentlyContinue | Select-Object -Last 6
+    if ($errTail) {
+        Write-Host "`nError log (last lines):" -ForegroundColor Yellow
+        $errTail | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkRed }
+    }
+    Write-Host "`nFull logs:" -ForegroundColor DarkGray
     Write-Host "  Get-Content .kiri\kiri-serve.log" -ForegroundColor DarkGray
     Write-Host "  Get-Content .kiri\kiri-serve.err" -ForegroundColor DarkGray
-    Write-Host "Or check if port 8765 is already in use:" -ForegroundColor DarkGray
-    Write-Host "  netstat -ano | findstr :8765" -ForegroundColor DarkGray
     Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
     Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
     exit 1
@@ -125,10 +140,23 @@ if ([string]::IsNullOrEmpty($Tool)) {
     if   (Get-Command claude   -ErrorAction SilentlyContinue) { $Tool = "claude" }
     elseif (Get-Command opencode -ErrorAction SilentlyContinue) { $Tool = "opencode" }
     if ([string]::IsNullOrEmpty($Tool)) {
-        Write-Error "Neither 'claude' nor 'opencode' found.`nInstall one or pass: .\scripts\start.ps1 -Tool opencode"
+        Write-Host ""
+        Write-Host "Neither 'claude' nor 'opencode' found in PATH." -ForegroundColor Red
+        Write-Host "Kiri is running on http://localhost:8765" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Install Claude Code:  https://claude.ai/code" -ForegroundColor DarkGray
+        Write-Host "Install OpenCode:     https://opencode.ai" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "Or start your tool manually with:" -ForegroundColor DarkGray
+        Write-Host '  $env:ANTHROPIC_BASE_URL = "http://localhost:8765"' -ForegroundColor DarkGray
+        Write-Host "  claude   # or opencode" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "Press Ctrl+C to stop Kiri when done." -ForegroundColor DarkGray
+        # Keep kiri running — wait for Ctrl+C
+        try { while ($true) { Start-Sleep -Seconds 5 } } finally {}
         Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
         Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
-        exit 1
+        exit 0
     }
 }
 Write-Host "Launching $Tool through Kiri..." -ForegroundColor Cyan
@@ -158,5 +186,7 @@ try {
     # Stop kiri and clear sentinel
     Stop-Process -Id $KiriProc.Id -ErrorAction SilentlyContinue
     Remove-Item ".kiri\.mode" -ErrorAction SilentlyContinue
-    Write-Host "Session ended. Kiri stopped." -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "Session ended — Kiri stopped." -ForegroundColor DarkGray
+    Write-Host "To start a new session: .\scripts\start.ps1" -ForegroundColor DarkGray
 }
