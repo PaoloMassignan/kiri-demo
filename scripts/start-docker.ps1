@@ -17,7 +17,18 @@ Set-Location $DemoDir
 & docker ps *>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Docker not running - starting Docker Desktop..." -ForegroundColor Yellow
-    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    $dockerPaths = @(
+        "C:\Program Files\Docker\Docker\Docker Desktop.exe",
+        "C:\Program Files\Docker\Docker Desktop\Docker Desktop.exe",
+        "$env:LOCALAPPDATA\Docker\Docker Desktop.exe"
+    )
+    $dockerExe = $dockerPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($dockerExe) {
+        Start-Process $dockerExe
+    } else {
+        Write-Host "Docker Desktop not found in common paths. Please start it manually, then retry." -ForegroundColor Red
+        exit 1
+    }
     $ready = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 2

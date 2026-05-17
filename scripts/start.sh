@@ -26,7 +26,7 @@ if ! command -v kiri >/dev/null 2>&1; then
     echo "  https://github.com/PaoloMassignan/kiri/releases/latest" >&2
     echo ""
     echo "Or fall back to Docker mode:" >&2
-    echo "  bash scripts/start.sh" >&2
+    echo "  bash scripts/start-docker.sh" >&2
     exit 1
 fi
 

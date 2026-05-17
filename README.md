@@ -42,9 +42,11 @@ Nothing to configure — skip to Step 4.
 
 #### Option B — Anthropic API key
 
+Replace `sk-ant-…` with your real key from [console.anthropic.com](https://console.anthropic.com/):
+
 ```bash
-echo "sk-ant-YOUR-KEY" > .kiri/upstream.key      # Linux / Mac
-"sk-ant-YOUR-KEY" | Out-File .kiri\upstream.key  # Windows (PowerShell)
+echo "sk-ant-api03-YOUR-REAL-KEY" > .kiri/upstream.key      # Linux / Mac
+"sk-ant-api03-YOUR-REAL-KEY" | Out-File .kiri\upstream.key  # Windows (PowerShell)
 ```
 
 ### Step 4 — Start
@@ -87,9 +89,11 @@ echo "sk-ant-YOUR-KEY" > .kiri/upstream.key
 ```
 
 Then:
-1. Set `oauth_passthrough: false` in `.kiri/config.yaml`
+1. Set `oauth_passthrough: false` in `.kiri/config.yaml` (Docker config — **not used in native mode**)
 2. Start Kiri (Step 4), then generate a `kr-` key: `bash scripts/kiri.sh key create`
 3. Copy `.env.example` to `.env`, uncomment `ANTHROPIC_API_KEY`, and paste the `kr-` key
+
+> **Note:** In native mode the active config is `.kiri/config.native.local`, generated at runtime by the start script. `.kiri/config.yaml` is only read in Docker mode.
 
 #### Option C — Free local mode (no cloud account)
 
@@ -192,7 +196,13 @@ Make sure `oauth_passthrough: true` is in `.kiri/config.yaml` and
 `ANTHROPIC_API_KEY` is not set in `.env`.
 
 **Code slips through unredacted**
+
+Run from a second terminal while the session is active (the wrapper auto-detects native vs Docker):
 ```bash
-bash scripts/kiri.sh log --tail 5
+bash scripts/kiri.sh log --tail 5    # Linux / macOS
 bash scripts/kiri.sh status
+```
+```powershell
+.\scripts\kiri.ps1 log --tail 5     # Windows
+.\scripts\kiri.ps1 status
 ```
